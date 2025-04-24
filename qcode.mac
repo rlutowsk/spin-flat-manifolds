@@ -1,0 +1,148 @@
+if not is(verbose_spin=true) then (
+    verbose_spin: false
+);
+
+/* Funkcja sprawdzająca ortogonalność macierzy */
+is_orthogonal(M) := block([n, Mt, iloczyn, jednostkowa, i, j],
+  n : length(M),
+  Mt : transpose(M),
+  iloczyn : M . Mt,
+  jednostkowa : ident(n),
+  return(equal(iloczyn, jednostkowa))
+);
+
+the_same_map(M, vec, inv) := block(
+    [Mt, k, i, n, res],
+    n: length(M),
+    Mt: transpose(M),
+    res: true,
+    for k: 1 thru n do (
+        if not is(sum(Mt[k][i]*e[i],i,1,n) = atensimp(vec . e[k] . inv)) then (res: false)
+    ),
+    return (res)
+);
+
+dot_product(l, vec, inv) := block([res,i, ii],
+    res: 1,
+    for i: 1 thru length(l) do (
+        ii: abs(l[i]),
+        if l[i] > 0 then(
+            res: atensimp(res . vec[ii])
+        ) ,
+        if l[i]<0 then (
+            res: atensimp(res . inv[ii])
+        )
+    ),
+    return (res)
+);
+
+fill_orthogonal(A) := block([i,j,mat,orthogonal_p,o],
+    for i : 1 thru length(A) do (
+    if (verbose_spin=true) then(
+        print("Checking generators for ", i, ": ", A[i]@name)
+    ),
+    for j : 1 thru length(A[i]@generators) do (
+        mat : A[i]@generators[j],
+        orthogonal_p : is_orthogonal(mat),
+        if not orthogonal_p then (
+            print(i, ":  Matrix ", j, " is NOT orthogonal"),
+            o[j]: A[i]@orthogonal[j]
+        )  else (
+            o[j]: mat
+        )
+    ),
+    A[i]@orthogonal: makelist(o[j], j, 1, length(A[i]@generators))
+    )
+);
+
+check_invertions(A) := block([i,j,mat],
+    for i : 1 thru length(A) do (
+        if (verbose_spin=true) then(
+            print("Checking generators for ", i, ": ", A[i]@name)
+        ),
+        for j : 1 thru length(A[i]@pimg) do (
+            if not is( atensimp(A[i]@pimg[j] . A[i]@pinv[j]) = 1 ) then (
+                print(i, ": spin vectors in ", j, " are not inverses of each other")
+            ) 
+        )
+    )
+);
+
+check_same_map(A) := block([i,j,mat],
+    for i : 1 thru length(A) do (
+        if (verbose_spin=true) then(
+            print("Checking generators for ", i, ": ", A[i]@name)
+        ),
+        for j : 1 thru length(A[i]@orthogonal) do (
+            mat : A[i]@orthogonal[j],
+            if not the_same_map(mat, A[i]@pimg[j], A[i]@pinv[j]) then (
+                print(i, ": Matrix ", j, " is not in the image of spin generators")
+            ) 
+        )
+    )
+);
+
+spin_presentation(A) := block([i,j, c, g, p, k, dp],
+    for i : 1 thru length(A) do (
+        if (verbose_spin=true) then(
+            print("Checking generators for ", i, ": ", A[i]@name)
+        ),
+        c: length(A[i]@presentation[1])+1,
+        g: length(A[i]@generators)+1,
+        p: zeromatrix(length(A[i]@presentation), c),
+        for j: 1 thru length(A[i]@presentation) do (
+            for k: 1 thru c-1 do (
+                p[j][k]: A[i]@presentation[j][k]
+            ),
+            dp: dot_product(A[i]@presentation[j], A[i]@pimg, A[i]@pinv),
+            if equal(dp,1) then (
+                p[j][c]: 0
+            )
+            elseif equal(dp,-1) then (
+                p[j][c]: g
+            ) else (
+                print(i, ": Error in presentation for row ", j),
+                return()
+            )
+        ),
+        A[i]@spin_pres: p
+    )
+);
+
+print_element(r) := block(
+    sconcat(
+        "rec(",
+        "name := ",
+        "\"", r@name, "\"",
+        ", generators := ", 
+        makelist(makelist(r@generators[i][j],j,1,length(r@generators[i])),i,1,length(r@generators)),
+        ", presentation := ",
+        makelist(r@spin_pres[j],j,1,length(r@spin_pres)),
+        ")"
+    )
+);
+
+print_to_file(filename, list) := block([filedesc, item],
+    filedesc: openw(filename),
+    printf(filedesc, "return [~%"),
+    for item in list do(
+        printf(filedesc, "~a,~%", print_element(item))
+    ),
+    printf(filedesc, "];~%"),
+    close(filedesc)
+);
+
+run() := block(
+    print("checking and generating orthogonal representation of groups ... "),
+    fill_orthogonal(A),
+    print("checking and generating orthogonal representation of groups done"),
+    print("checking if pimg and pinv hold inverted elements ... "),
+    check_invertions(A),
+    print("checking if pimg and pinv hold inverted elements done"),
+    print("checking of conjugation by pimg defined orthogonal generators ... "),
+    check_same_map(A),
+    print("checking of conjugation by pimg defined orthogonal generators done"),
+    print("generating presentation in spin ... "),
+    spin_presentation(A),
+    print("generating presentation in spin done")
+);
