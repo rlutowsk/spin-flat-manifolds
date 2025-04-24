@@ -79,3 +79,10 @@ The `true` flag is for verbosity and can be ommited:
 ```gap
 CheckSpinStructures(s, q, true);
 ```
+
+Optional: write result to `sdata.g` file:
+```gap
+str := String(s);;
+RemoveCharacters(str, " \r\t\n");
+PrintTo("sdata.g", "return ", str, ";\n");
+```
