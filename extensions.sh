@@ -15,5 +15,8 @@ for q in +(group|max|min).+([0-9]); do
     for x in $q.+([0-9]).+([0-9]); do
         echo -n "$x: "
         Extensions pres.$q $x -S -F
+        if [ $? -ne 0 ]; then
+            echo $x >> extensions.fail.log
+        fi
     done
 done

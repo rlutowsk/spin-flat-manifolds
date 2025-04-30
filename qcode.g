@@ -59,12 +59,17 @@ FillQData := function(list, v...)
     od;
 end;
 
-WriteQData := function(list, dirname)
-    local r, n, m;
+WriteQData := function(list, dirname, cutoff...)
+    local r, n, m, c;
+
+    c := 0;
+    if Size(cutoff)>0 then
+        c := cutoff[1];
+    fi;
 
     for r in list do
         CaratWriteBravaisFile( Concatenation( dirname, "/", r.name ), r );
-        n := NrCols( r.presentation )-1;
+        n := NrCols( r.presentation )-c;
         m := NrRows( r.presentation );
         CaratWriteMatrixFile( Concatenation( dirname, "/pres.", r.name ), r.presentation{[1..m]}{[1..n]} );
     od;

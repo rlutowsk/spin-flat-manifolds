@@ -1,81 +1,117 @@
 # Calculate spin structures on low dimensional flat manifolds
 
-Use maxima, bash scripts, CARAT and GAP to calculate flat manifolds with or without spin structure of dimension up to 6.
+Calculate flat manifolds with or without spin structure in dimensions up to 6.
 
-## 2-groups
+## Prerequisities
 
-The crucial step is te determine spin structures on flat manifolds with 2-group holonomy.
+1. The following tools are used to obtain the results:
 
-### Maxima
+    - bash: we use some scripting
+    - [maxima](https://maxima.sourceforge.io/): needed to work with Clifford algebras
+    - [GAP](https://www.gap-system.org/)
+    - [CARAT](https://lbfm-rwth.github.io/carat/), available also as GAP package
+    - [HAPCryst](https://gap-packages.github.io/hapcryst/) GAP package
+2. Change data in `carat-env.sh` to reflect the GAP and CARAT setup. Import the variables to the session:
 
-```maxima
-load("qdata.mac");
-```
+    ```bash
+    source carat-env.sh
+    ```
 
-```maxima
-load("qcode.mac");
-```
+## Step 1: Preparing the data for all Bieberbach groups
 
-```maxima
-run();
-```
+1. Get the names of the files holding representatives of $\mathbb{Q}$-classes of finite subgroups of $\operatorname{GL}_n(\mathbb{Z})$, for $n \leq 6$, using shell. The output is stored in `qnames.g` file.
 
-```maxima
-print_to_file("qdata.g", A);
-```
+    ```bash
+    # bash
+    ./qnames.sh
+    ```
 
+1. Generate the data for further calculations with GAP and CARAT. We store as many information as one can get from $\mathbb{Q}$-class:
 
-### GAP
+    - dimension
+    - generators
+    - order
+    - presentation (from CARAT)
+    - orientability
 
-```gap
-Read("qcode.g");
-```
+    ```gap
+    # gap
+    Read( "code.g" );
+    # function accepts two arguments, by default: qnames.g, qdata.g
+    # it reads qnames.g and writes output to qdata.g
+    qdata := ParseQData();;
+    # write each record into carat format (group and presentation files)
+    # note that the scond argument must point to an empty folder
+    WritaCaratQData( qdata, "/tmp/data" );
+    ```
+1. Filter the groups to those which are holonomies of Bieberbach groups. Side effect of this operation is a generation of Bieberbach groups.
 
-```gap
-q:=ReadAsFunction("qdata.g")();;
-```
+    ```bash
+    # bash
+    ./qtoz.sh /tmp/data
+    ./extensions.sh /tmp/data
+    ./anames.sh /tmp/data
+    ```
 
-With `true` the functions is verbose:
-```gap
-FillQData(g, true);
-```
+    **Note:** One can check the results by counting number of generated files. Data is taken from [CARAT doc](https://lbfm-rwth.github.io/carat/doc/) website:
 
-Make sure to create a destination folder, `/tmp/qdata` in this example.
-```gap
-WriteQData(q, "/tmp/qdata");
-```
+    ```bash
+    # bash
+    find /tmp/data/ -regextype egrep -regex '.*/(group|min|max)\.[0-9]+$' | wc -l                         # number of Q-classes should be 8329
+    find /tmp/data/ -regextype egrep -regex '.*/(group|min|max)\.[0-9]+\.[0-9]+\.[0-9]+$' | wc -l         # number of Z-classes should be 92185
+    find /tmp/data/ -regextype egrep -regex '.*/(group|min|max)\.[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | wc -l # number of Bieberbach groups should be 39893
+    ```
 
-### Shell
+    ```gap
+    # gap
+    # similar as above, the functions accepts two more arguments
+    # by default it reads anames.g file and writes to adata.g one
+    adata := ParseAffData( qdata );;
+    ```
 
-Conditions:
+**Note:** At the end of this step, we have two files: 
 
-    1. Make sure you have access to `bash` shell.
-    1. In this example CARAT is located in `/usr/local/src/gap-4.14.0/pkg/caratinterface/bin/x86_64-pc-linux-gnu-default64-kv9`. Change `carat-env.sh` accordingly.
+- `qdata.g` holding information about all $\mathbb{Q}$-classes from CARAT
+- `adata.g` holding information about Bieberbach group and their $\mathbb{Q}$-classes
 
-```bash
-./qtoz.sh /tmp/qdata
-```
+## Step 2: Spin structures for orientable Bieberbach groups with 2-group holonomies
 
-```bash
-./extensions.sh /tmp/qdata
-```
+The crucial step is the determination of spin structures on flat manifolds with 2-group holonomy. We are interested in:
 
-```bash
-./generate-data.sh /tmp/qdata | tee snames.g
-```
+- orientable, i.e. those which lie in $\operatorname{SL}(n,\mathbb{Q})$, groups
+- of dimension greater than $3$ - up to this dimension all manifolds are spin 
 
-### GAP
+1. Orientable Bieberbach groups with $2$-group holonomy $\mathbb{Q}$-classes of their holonomy groups can be obtained by:
 
-```gap
-Read("acode.g");
-```
+    ```gap
+    # gap
+    oa2data := Filtered( adata, x->x.qdata.dim>3 and x.qdata.orientable and x.qdata.size>1 and x.qdata.size = 2^Log2Int(x.qdata.size) );;
+    oq2data := SSortedList( oa2data, x->x.qdata );;
+    ```
 
-```gap
-s := ReadAsFunction("snames.g")();;
-ReadAffData(s, "/tmp/qdata");
-```
+1. Now comes the part where we look for lifts of generators of the group. This is done by hand (we can use methods from the article).
 
-The `true` flag is for verbosity and can be ommited:
-```gap
-CheckSpinStructures(s, q, true);
-```
+1. In order to work with Clifford algebras, we use Maxima. The `run` function involves:
+
+    - checking if the groups lie in $O(n,\mathbb{Z})$ (almost all are)
+    - checking whether we generated inverses of elements of $\operatorname{Spin}(n)$
+    - checking whether the elements of $\operatorname{Spin}(n)$ are in fact lifts of the generators
+    - generating the presentation (a non-trivial part of it) of lift of the holonomy groups
+
+    ```maxima
+    /* maxima */
+    load( "sdata.mac" );
+    load( "scode.mac" );
+    run();
+    print_to_file( "sdata.g", A );
+    ```
+
+## Step 3: Spin structures for low dimensional Bieberbach groups
+
+1. Having proper data from Maxima, we can use GAP to generate the holonomy groups and their lifts to $\operatorname{Spin}(n)$. The `FillSpinQData` function, called by `FillSpinAffData`, will check for consistence of the data generated by Maxima with the data so far calculated by GAP.
+
+    ```gap
+    # gap
+    sdata := ReadAsFunction( "sdata.g" )();;
+    FillSpinAffData( adata, oq2data, sdata );
+    ```

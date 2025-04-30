@@ -72,7 +72,8 @@ IsSpinBieberbachGroup := function( s, q )
 
         Add(imgs, [One(c), c]);
     od;
-    s.is_spin := ForAny( Cartesian(imgs), img->CheckRelations2(s.generators, img) and CheckRelations3(s.generators, q.presentation, img) );
+    s.spin_images := First( Cartesian(imgs), img->CheckRelations2(s.generators, img) and CheckRelations3(s.generators, q.presentation, img) );
+    s.is_spin := s.spin_images <> fail;
     return s.is_spin;
 end;
 

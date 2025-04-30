@@ -13,4 +13,8 @@ cd $1
 
 for q in +(group|max|min).+([0-9]); do
     QtoZ -D $q
+    if [ $? -ne 0 ]; then
+        echo $q >> qtoz.fail.log
+        cp $q $q.1.1
+    fi
 done
