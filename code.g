@@ -1,7 +1,7 @@
 SPIN_DIR := Directory("~/spin-flat-manifolds");
 CARAT_NAME_SCRIPT := Filename(SPIN_DIR, "name.sh");
 
-LoadPackage("hapcryst");
+LoadPackage("hapcryst", false);
 
 InfoSpinBieberbach := NewInfoClass("InfoSpinBieberbach");
 
@@ -12,79 +12,6 @@ InfoSpinBieberbach := NewInfoClass("InfoSpinBieberbach");
 # Caltulations with representatives of finite subgroups of GL(n,Q)
 #
 #################################################################################
-
-#################################################################################
-#
-# This function assumes that with every file holding generators of group
-# there exists a `pres.` prefixed file holding its presentation.
-#
-QDataByFilenames := function(filename)
-    local names, qdata, n, r, t, g;
-
-    names := ReadAsFunction( filename )();;
-    qdata := [];
-    for n in names do
-        Info( InfoSpinBieberbach, 2, "Parsing qdata for ", n, " ... " );
-        r := CaratReadBravaisFile( n );
-        r.dim := Size( r.generators[1] );
-        t := SplitString( n, "/" );
-        r.name := Last( t );
-        t[Size(t)] := Concatenation( "pres.", Last(t) );
-        r.presentation := CaratReadMatrixFile( JoinStringsWithSeparator(t, "/") );
-        # This is done later, without reading Q-data
-        # r.orientable := ForAll( r.generators, x->Determinant(x)>0 );
-        if not IsBound( r.size ) then
-            # fix the records without size component
-            r.size := Size( Group(r.generators) );
-        fi;
-        g := Group( r.generators );
-        Add( qdata, r );
-    od;
-    return qdata;
-end;
-
-ParseQData := function(l...)
-    local filein, fileout, qdata, str;
-
-    if Size(l) >= 1 then
-        filein := l[1];
-    else
-        filein := "qnames.g";
-    fi;
-    if Size(l) >= 2 then
-        fileout := l[2];
-    else
-        fileout := "qdata.g";
-    fi;
-    Info( InfoSpinBieberbach, 1, "Reading filenames from ", filein, " ... " );
-    qdata := QDataByFilenames( filein );
-    Info( InfoSpinBieberbach, 1, "Writing qdata to ", fileout, " ... " );
-    str := String( qdata );
-    RemoveCharacters( str, " \r\t\n" );
-    PrintTo( fileout, "return ", str, ";" );
-
-    return qdata;
-end;
-
-WriteCaratQData := function(data, dirname)
-    local r, contents, err;
-
-    contents := DirectoryContents( dirname );
-    if contents = fail then
-        err := LastSystemError();
-        Error("Error opening ", dirname, ": ", err.message);
-    fi;
-    if Size(contents) > 2 then
-        Error("The directory ", dirname, " must be empty");
-    fi;
-
-    Info( InfoSpinBieberbach, 1, "Writing matrix files to ", dirname, " ... " );
-    for r in data do
-        Info( InfoSpinBieberbach, 2, "Writing ", r.name, " ... " );
-        CaratWriteBravaisFile( Concatenation( dirname, "/", r.name ), r );
-        CaratWriteMatrixFile( Concatenation( dirname, "/pres.", r.name ), r.presentation );
-    od;
-end;
 
 QNameByAffName := function( aname )
     local s;
@@ -107,6 +34,8 @@ ZNameByAffName := function( aname )
     return JoinStringsWithSeparator(s, ".");
 end;
 
+ZNameByQName := ZNameByAffName;
+
 #################################################################################
 #
 # AffClass
@@ -114,34 +43,6 @@ end;
 # Caltulations with representatives of Bieberbach groups
 #
 #################################################################################
-
-AffDataByFilenames := function(filename)
-    local anames, adata, n, r, t;
-
-    anames := ReadAsFunction( filename )();;
-    adata  := [];;
-    for n in anames do
-        Info( InfoSpinBieberbach, 2, "Parsing aff data for ", n, " ... " );
-        r := rec();
-        r.generators := CaratReadMatrixFile( n );
-        t := SplitString( n, "/" );
-        r.name := Last(t);
-        t := SplitString( r.name, "." );
-        r.qname := Concatenation(t[1], ".", t[2]);
-        Add( adata, r );
-    od;
-
-    return adata;
-end;
-
-AttachQNames := function ( data )
-    local r, t;
-    for r in data do
-        t := SplitString( r.name, "." );
-        r.qname := Concatenation(t[1], ".", t[2]);
-    od;
-    return data;
-end;
 
 AffPreImageSyl2Generators := function(generators)
     local sgrp;
@@ -211,13 +112,14 @@ RankOneCohomologyMod2 := function(generators)
     return Size( Filtered(Homology(tr, 1), IsEvenInt) );
 end;
 
-FillRankOneCohomologyMod2 := function( data )
-    local r;
-    Info( InfoSpinBieberbach, 1, "Calculating ranks of one cohomologies mod 2 ...");
-    for r in data do
-        Info( InfoSpinBieberbach, 2, "Calculating one cohomology mod 2 rank for ", r.name ," ... " );
-        r.one_cohomology_mod2 := RankOneCohomologyMod2( r.generators );
-    od;
+RankOneCohomologyMod2ByRec := function( arec )
+    local force;
+
+    force := ValueOption("force")=true;
+    if not IsBound(arec.one_cohomology_mod2) or force then
+        arec.one_cohomology_mod2 := RankOneCohomologyMod2( arec.generators );
+    fi;
+    return arec.one_cohomology_mod2;
 end;
 
 ParseAffData := function( qdata, adata )
@@ -225,28 +127,6 @@ ParseAffData := function( qdata, adata )
 
     all := ValueOption("all")=true;
     cohomology := ValueOption("cohomology")=true;
-
-    # if Size(l) >= 1 then
-    #     if IsString(l[1]) then
-    #         filein := l[1];
-    #     elif IsList(l[1]) then
-    #         adata := l[1];
-    #         AttachQNames(adata);
-    #     else
-    #         Error("Second argument of bad type");
-    #     fi;
-    # else
-    #     filein := "anames.g";
-    # fi;
-    # if Size(l) >= 2 then
-    #     fileout := l[2];
-    # else
-    #     fileout := "adata.g";
-    # fi;
-    # if IsBound( filein ) then
-    #     Info( InfoSpinBieberbach, 1, "Reading filenames from ", filein, " ... " );
-    #     adata := AffDataByFilenames( filein );
-    # fi;
     
     filename  := CaratTmpFile("group");
 
@@ -298,14 +178,6 @@ ParseAffData := function( qdata, adata )
         fi;
     od;
 
-    # if IsString( fileout ) then
-    #     Info( InfoSpinBieberbach, 1, "Writing aff data to ", fileout, " ... " );
-    #     str := String( adata );
-    #     RemoveCharacters( str, " \r\t\n" );
-    #     PrintTo( fileout, "return ", str, ";" );
-    # fi;
-
-    # return adata;
 end;
 
 FilteredOrientable2PointGroupQData := function( adata, d... )
@@ -315,114 +187,43 @@ FilteredOrientable2PointGroupQData := function( adata, d... )
     else
         dim := 1;
     fi;
-    return SSortedList( Filtered( adata, x->x.orientable and x.qdata.dim>=dim and x.qdata.size>1 and x.qdata.size = 2^Log2Int(x.qdata.size) ) );
+    return SSortedList( Filtered( adata, x->x.orientable and x.qdata.dim>=dim and x.qdata.size>1 and x.qdata.size = 2^Log2Int(x.qdata.size) ), x->x.qdata );
 end;
 
-ParseAllAffData := function(qdata, l...)
-    local filein, fileout, filename, adata, r, str;
+# RanksCohomologyMod2 := function(generators)
+#     local dim, i, tmp, egens, sgrp, res, cc, half, coh, iso, img;
 
-    if Size(l) >= 1 then
-        if IsString(l[1]) then
-            filein := l[1];
-        elif IsList(l[1]) then
-            adata := l[1];
-            AttachQNames(adata);
-        else
-            Error("Second argument of bad type");
-        fi;
-    else
-        filein := "anames-all.g";
-    fi;
-    if Size(l) >= 2 then
-        fileout := l[2];
-    else
-        fileout := "adata.g";
-    fi;
-    if IsBound( filein ) then
-        Info( InfoSpinBieberbach, 1, "Reading filenames from ", filein, " ... " );
-        adata := AffDataByFilenames( filein );
-    fi;
-    Info( InfoSpinBieberbach, 1, "Attaching qdata to aff data ... " );
-    for r in adata do
-        r.qdata := First(qdata, x->x.name = r.qname);
-        if r.qdata = fail then
-            Error("Cannot find ", r.qname, " in qdata");
-        else
-            Unbind(r.qname);
-        fi;
-    od;
-    Info( InfoSpinBieberbach, 1, "Calculating generators of preimages of Sylow 2 subgroups ... " );
-    for r in adata do
-        Info( InfoSpinBieberbach, 2, "Calculating generators of preimage of Sylow 2 subgroup for ", r.name ," ... " );
-        if r.qdata.size>1 and r.qdata.size=2^Log2Int(r.qdata.size) then
-            r.s2generators := ShallowCopy( r.generators );
-        elif IsOddInt( r.qdata.size ) then
-            r.s2generators := [ IdentityMat(r.qdata.dim+1) ];
-        else
-            r.s2generators := AffPreImageSyl2Generators( r.generators );
-        fi;
-    od;
-    Info( InfoSpinBieberbach, 1, "Calculating names of Sylow 2 subgroup ... " );
-    filename  := CaratTmpFile("group");
-    for r in adata do
-        Info( InfoSpinBieberbach, 2, "Calculating name of preimage of Sylow 2 subgroup for ", r.name ," ... " );
-        if r.s2generators = r.generators then
-            r.s2name := r.name;
-        else
-            r.s2name := CaratNameByGenerators(r.s2generators, filename);
-        fi;
-    od;
-    FillRankOneCohomologyMod2( adata );
-    Info( InfoSpinBieberbach, 1, "Writing aff data to ", fileout, " ... " );
-    str := String( adata );
-    RemoveCharacters( str, " \r\t\n" );
-    PrintTo( fileout, "return ", str, ";" );
-
-    return adata;
-end;
-
-RanksCohomologyMod2 := function(generators)
-    local dim, i, tmp, egens, sgrp, res, cc, half, coh, iso, img;
-
-    egens := List( generators, TransposedMat );
-    dim   := NrRows( generators[1] ) - 1;
-    for i in [1..dim] do
-        tmp := IdentityMat( dim+1 );
-        tmp[dim+1][i] := 1;
-        Add( egens, tmp );
-    od;
+#     egens := List( generators, TransposedMat );
+#     dim   := NrRows( generators[1] ) - 1;
+#     for i in [1..dim] do
+#         tmp := IdentityMat( dim+1 );
+#         tmp[dim+1][i] := 1;
+#         Add( egens, tmp );
+#     od;
     
-    if IsEvenInt( dim ) then
-        half := dim/2;
-    else
-        half := (dim-1)/2;
-    fi;
+#     if IsEvenInt( dim ) then
+#         half := dim/2;
+#     else
+#         half := (dim-1)/2;
+#     fi;
 
-    sgrp := AffineCrystGroupOnRight( egens );
-    Info( InfoSpinBieberbach, 3, "Calculating resolution ...");
-    iso  := IsomorphismPcpGroup( sgrp );
-    img  := Image( iso );
-    res  := ResolutionAlmostCrystalGroup( img, half+1 );
-    cc   := HomToIntegersModP( res, 2 );
+#     sgrp := AffineCrystGroupOnRight( egens );
+#     Info( InfoSpinBieberbach, 3, "Calculating resolution ...");
+#     iso  := IsomorphismPcpGroup( sgrp );
+#     img  := Image( iso );
+#     res  := ResolutionAlmostCrystalGroup( img, half+1 );
+#     cc   := HomToIntegersModP( res, 2 );
     
-    coh := [];
-    for i in [0..half] do
-        Info( InfoSpinBieberbach, 3, "Calculating H^", i, " ...");
-        Add(coh, Cohomology(cc, i));
-    od;
-    for i in [half+1..dim] do
-        coh[i+1] := coh[dim-i+1];
-    od;
-    return coh;
-end;
-
-FillCohomologyMod2 := function( data )
-    local a;
-    for a in data do
-        Info( InfoSpinBieberbach, 2, "Calculating mod 2 cohomology for ", a.name, " ... ");
-        a.hmod := RanksCohomologyMod2( a.generators );
-    od;
-end;
+#     coh := [];
+#     for i in [0..half] do
+#         Info( InfoSpinBieberbach, 3, "Calculating H^", i, " ...");
+#         Add(coh, Cohomology(cc, i));
+#     od;
+#     for i in [half+1..dim] do
+#         coh[i+1] := coh[dim-i+1];
+#     od;
+#     return coh;
+# end;
 
 #################################################################################
 #
@@ -456,8 +257,11 @@ SpinExtensionByMat := function( mat )
     fi;
     g := FreeGroup( n );
     f := GeneratorsOfGroup( g );
+    # Here we encode the action, which is trivial
     p := List( [1..n-1], i->Comm(f[i], f[n]) );
+    # The center consists of involution only
     Add( p, f[n]^2 );
+    # The lift of the relations in the holonomy group
     Append( p, List( mat, row->ElementFromWordVector(f, row) ) );
     return g/p;
 end;
@@ -579,15 +383,22 @@ FillSpinAffData := function( adata, qdata, sdata )
     
     force := ValueOption("force")=true;
 
+    # this will join the q and spin data generated so far
+    # additionally, the function do some checks on the representation
     FillSpinQData( qdata, sdata);
     for a in adata do
         Info( InfoSpinBieberbach, 2, "Generating spin data for ", a.name , " ... " );
-        if ForAny(a.generators, x->Determinant(x)<0) then
+        # the a.orientable field should be assigned with ParseAffData function
+        if not a.orientable then
             a.is_spin := false;
+            a.no_of_spin := 0;
             continue;
         fi;
+        # for these cases we know for sure that the group is spin
         if IsOddInt(a.qdata.size) or a.qdata.dim<=3 then
             a.is_spin := true;
+            RankOneCohomologyMod2ByRec( a );
+            a.no_of_spin := 2^a.one_cohomology_mod2;
             continue;
         fi;
         if a.name = a.s2name then
@@ -601,8 +412,10 @@ FillSpinAffData := function( adata, qdata, sdata )
         if IsBound(b.is_spin) and not force then
             a.is_spin := b.is_spin;
             if (a.is_spin) then
-                a.one_cohomology_mod2 := RankOneCohomologyMod2( a.generators );
+                RankOneCohomologyMod2ByRec( a );
                 a.no_of_spin := 2^a.one_cohomology_mod2;
+            else
+                a.no_of_spin := 0;
             fi;
             continue;
         fi;
@@ -613,6 +426,13 @@ FillSpinAffData := function( adata, qdata, sdata )
         b.qdata := q;
         IsSpinBieberbachGroupByRec( b );
         a.is_spin := b.is_spin;
+        # WARN: copy of the few line above!!!
+        if (a.is_spin) then
+            RankOneCohomologyMod2ByRec( a );
+            a.no_of_spin := 2^a.one_cohomology_mod2;
+        else
+            a.no_of_spin := 0;
+        fi;
     od;
 end;
 
