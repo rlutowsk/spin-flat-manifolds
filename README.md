@@ -17,101 +17,153 @@ Calculate flat manifolds with or without spin structure in dimensions up to 6.
     source carat-env.sh
     ```
 
-## Step 1: Preparing the data for all Bieberbach groups
+## Step 0: Generating Bieberbach groups
 
-1. Get the names of the files holding representatives of $\mathbb{Q}$-classes of finite subgroups of $\text{GL}_n(\mathbb{Z})$, for $n \leq 6$, using shell. The output is stored in `qnames.g` file.
+Here is an example way of generating low dimensional, i.e. up to dimension 6, Bieberbach groups.
+
+**IMPORTANT:** The results of the following calculations have been saved in the files `qdata.g` and `bieberbach.g`, which are the part of this repository. This step can be skipped.
+
+**Remark:** In the following, the folder `/tmp/data` is used to store all calculations. Obviously, it can be changed to anything else.
+
+**Remark:** This section uses only shell's commands, which should be invoked from within the root folder of the source tree.
+
+**Remark:** The `qtoz.sh` and `extensions.sh` scripts accept an option `-j number_of_jobs`, which makes them run in parallel. This will be noted in brackets, e.g. `[ -j 16 ]`.
+
+1. Copy CARAT files holding representatives of $\mathbb Q$-classes and their presentations:
 
     ```bash
-    # bash
-    ./qnames.sh
+    $ ./qcopy /tmp/data
+    ```
+1. Generate representatives of $\mathbb Z$-classes:
+
+    ```bash
+    $ ./qtoz.sh [ -j 16 ] /tmp/data
+    ```
+    **Note:** We are interesting in generating torsion-free crystallographic groupsm we can filter those $\mathbb Q$-classes, for which there exists an element without eigenvalue $1$. This id the default behaviour of the `qtoz.sh` script. It is slower at this stage, but saves time at the next one. For generating all $\mathbb Z$-classes, use the `-a` switch:
+
+    ```bash
+    $ ./qtoz.sh -a [ -j 16 ] /tmp/data
+    ```
+1. Generate torsion-free extensions for every representative of the $\mathbb Z$-classes:
+
+    ```bash
+    $ ./extensions.sh [ -j 16 ] /tmp/data
+    ```
+1. Write names and generators of low dimensional Bieberbach groups to `bieberbach.g` file:
+
+    ```bash
+    $ gap -b -c 'Read("names.g"); b:=ReadAffCaratDir("/tmp/data"); str:=String(b); RemoveCharacters(str, " \r\t\n"); PrintTo("bieberbach.g", "return ", str, ";" ); quit;'
     ```
 
-1. Generate the data for further calculations with GAP and CARAT. We store as many information as one can get from $\mathbb{Q}$-class:
+1. We will also need the data of $\mathbb Q$-classes in GAP:
 
-    - dimension
-    - generators
-    - order
-    - presentation (from CARAT)
+    ```bash
+    $ gap -b -c 'Read("names.g"); q:=ReadQCaratDir("/tmp/data"); str:=String(q); RemoveCharacters(str, " \r\t\n"); PrintTo("qdata.g", "return ", str, ";" ); quit;'
+    ```
+**Note:** One can check the results by counting number of generated files. Data is taken from [CARAT doc](https://lbfm-rwth.github.io/carat/doc/) website:
+
+```bash
+$ ./count.sh -aqz /tmp/data
+Number of Q classes: 8329    # total number of Q-classes
+Number of Z classes: 44691   # number of Z-classes without -a switch for qtoz.sh; with this switch the result should be 92185
+Number of Aff classes: 39893 # total number of low dimensional Bieberbach groups
+```
+
+## Step 1: Preparing data for Bieberbach groups
+
+**Remark:** In this step we are working with GAP.
+
+**Remark:** Whenever we say about a Bieberbach group $\Gamma$, it fits the following short exact sequence:  
+$$ 0  \longrightarrow \mathbb{Z}^n \longrightarrow \Gamma \stackrel{\pi}{\longrightarrow} G \longrightarrow 1$$
+
+1. Read the $\mathbb Q$ and $\text{Aff}$ data:
+
+    ```bash
+    gap> qdata := ReadAsFunction( "qdata.g" )();;
+    gap> adata := ReadAsFunction( "bieberbach.g" )();;
+    ```
+
+1. Load the `code.g` file:
+
+    ```gap
+    gap> Read( "code.g" );
+    ```
+1. The `ParseAffData` function generates basic information for Bieberbach groups from `adata`, which are needed for further calculations. For a group $\Gamma$ these include:
+
     - orientability
+    - $\mathbb Q$-class of $G$ (from `qdata`)
+    - the CARAT name of the subgroup $\pi^{-1}(\text{Syl}_2(G))$ (the preimage of the Sylow $2$-subgroup of $G$)
+    - the dimension of $H^1(\Gamma, \mathbb{F}_2)$
 
-    ```gap
-    # gap
-    Read( "code.g" );
-    # function accepts two arguments, by default: qnames.g, qdata.g
-    # it reads qnames.g and writes output to qdata.g
-    qdata := ParseQData();;
-    # write each record into carat format (group and presentation files)
-    # note that the scond argument must point to an empty folder
-    WritaCaratQData( qdata, "/tmp/data" );
-    ```
-1. Filter the groups to those which are holonomies of Bieberbach groups. Side effect of this operation is a generation of Bieberbach groups.
+    Note that if $\Gamma$ is not orientable, the rest of the info is not needed, since $\Gamma$ is not spin. For the sake of time of the execution, the default behaviour of the function is as follows:
 
-    ```bash
-    # bash
-    ./qtoz.sh /tmp/data
-    ./extensions.sh /tmp/data
-    ./anames.sh /tmp/data
-    ```
+    a) determine orientability of $\Gamma$  
+    b) if $\Gamma$ is orientable, calculate $\mathbb Q$-class of $G$ and $\pi^{-1}(\text{Syl}_2(G))$
 
-    **Note:** One can check the results by counting number of generated files. Data is taken from [CARAT doc](https://lbfm-rwth.github.io/carat/doc/) website:
+    Here are the options to run the function:
 
-    ```bash
-    # bash
-    find /tmp/data/ -regextype egrep -regex '.*/(group|min|max)\.[0-9]+$' | wc -l                         # number of Q-classes should be 8329
-    find /tmp/data/ -regextype egrep -regex '.*/(group|min|max)\.[0-9]+\.[0-9]+\.[0-9]+$' | wc -l         # number of Z-classes should be 92185
-    find /tmp/data/ -regextype egrep -regex '.*/(group|min|max)\.[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | wc -l # number of Bieberbach groups should be 39893
-    ```
+    - the default (minimal set of information):
 
-    ```gap
-    # gap
-    # similar as above, the functions accepts two more arguments
-    # by default it reads anames.g file and writes to adata.g one
-    adata := ParseAffData( qdata );;
-    ```
+        ```gap
+        gap> ParseAffData( qdata, adata );
+        ```
+    - calculate info for all groups:
 
-**Note:** At the end of this step, we have two files: 
+        ```gap
+        gap> ParseAffData( qdata, adata : all );
+        ```
+    - calculate the first cohomology
 
-- `qdata.g` holding information about all $\mathbb{Q}$-classes from CARAT
-- `adata.g` holding information about Bieberbach group and their $\mathbb{Q}$-classes
+        ```gap
+        gap> ParseAffData( qdata, adata : cohomology );
+        ```
+    - calculate all information:
 
-## Step 2: Spin structures for orientable Bieberbach groups with 2-group holonomies
+        ```gap
+        gap> ParseAffData( qdata, adata : all, cohomology);
+        ```
+## Step 2: Lifts of certain holonomy groups to $\text{Spin}(n)$
 
 The crucial step is the determination of spin structures on flat manifolds with 2-group holonomy. We are interested in:
 
-- orientable, i.e. those which lie in $\text{SL}(n,\mathbb{Q})$, groups
+- orientable, in our case those which lie in $\text{SL}(n,\mathbb{Q})$, groups
 - of dimension greater than $3$ - up to this dimension all manifolds are spin 
 
 1. Orientable Bieberbach groups with $2$-group holonomy $\mathbb{Q}$-classes of their holonomy groups can be obtained by:
 
     ```gap
-    # gap
-    oa2data := Filtered( adata, x->x.qdata.dim>3 and x.qdata.orientable and x.qdata.size>1 and x.qdata.size = 2^Log2Int(x.qdata.size) );;
-    oq2data := SSortedList( oa2data, x->x.qdata );;
+    gap> oq2data := SSortedList( Filtered( adata, x->x.orientable and x.qdata.dim>3 and x.qdata.size>1 and x.qdata.size = 2^Log2Int(x.qdata.size) ), x->x.qdata );;
     ```
 
-1. Now comes the part where we look for lifts of generators of the group. This is done by hand (we can use methods from the article).
+    We get 63 classes to work with further.
+
+1. Now comes the part where we look for lifts of generators of the group. This is done by hand (we can use methods from the article). The data is stored in `sdata.mac` file.
 
 1. In order to work with Clifford algebras, we use Maxima. The `run` function involves:
 
-    - checking if the groups lie in $O(n,\mathbb{Z})$ (almost all are)
-    - checking whether we generated inverses of elements of $\text{Spin}(n)$
-    - checking whether the elements of $\text{Spin}(n)$ are in fact lifts of the generators
-    - generating the presentation (a non-trivial part of it) of lift of the holonomy groups
+    a) checking if the groups lie in $O(n,\mathbb{Z})$ (almost all are)  
+    b) checking whether we generated inverses of elements of $\text{Spin}(n)$  
+    c) checking whether the elements of $\text{Spin}(n)$ are in fact lifts of the generators  
+    d) generating the presentation of lift of the holonomy groups
+
+    The following should be run in Maxima:
 
     ```maxima
-    /* maxima */
-    load( "sdata.mac" );
-    load( "scode.mac" );
-    run();
-    print_to_file( "sdata.g", A );
+    (%i1) load( "sdata.mac" );
+    (%i2) load( "scode.mac" );
+    (%i3) run(false); /* true to use verbose mode */
+    (%i4) print_to_file( "sdata.g", A );
     ```
+
+    Let us be more precise about the presentation. If $\lambda \colon \text{Spin}(n) \to O(n)$ is the covering map, $G$ is as above, then its lift to spin is a central extension  
+    $$ 1 \longrightarrow \{ \pm 1 \} \longrightarrow \widetilde G \stackrel{\lambda}{\longrightarrow} G \longrightarrow 1.$$  
+    Hence in the presentation of $\widetilde G$ we get a central element $c$ of order $2$. The only nontrivial calculations involve lifting presentation of $G$, i.e. if $w$ is a relator in $G$, $\widetilde w$ - its lift to $\widetilde G$, then either $\widetilde w = 1$ or $\widetilde w = c$. This is a task of the step d).
 
 ## Step 3: Spin structures for low dimensional Bieberbach groups
 
 1. Having proper data from Maxima, we can use GAP to generate the holonomy groups and their lifts to $\text{Spin}(n)$. The `FillSpinQData` function, called by `FillSpinAffData`, will check for consistence of the data generated by Maxima with the data so far calculated by GAP.
 
     ```gap
-    # gap
-    sdata := ReadAsFunction( "sdata.g" )();;
-    FillSpinAffData( adata, oq2data, sdata );
+    gap> sdata := ReadAsFunction( "sdata.g" )();;
+    gap> FillSpinAffData( adata, oq2data, sdata );
     ```

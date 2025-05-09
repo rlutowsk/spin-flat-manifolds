@@ -134,7 +134,8 @@ print_to_file(filename, list) := block([filedesc, item],
     close(filedesc)
 );
 
-run() := block(
+run(verbose) := block(
+    verbose_spin: verbose,
     print("checking and generating orthogonal representation of groups ... "),
     fill_orthogonal(A),
     print("checking and generating orthogonal representation of groups done"),
