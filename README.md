@@ -298,7 +298,7 @@ gap> max := List( TransposedMat( aspin5 ), x->Maximum( List(x, y->Length(String(
 gap> for l in aspin5 do; row := List([1..4], i->String(l[i], max[i])); Print( JoinStringsWithSeparator(row, " | "), "\n"); od;
 ```
 
-|       $\Gamma'$ |         $G'$ |      $r^{-1}(G)$ | $\#S$|
+|       &Gamma; |         G' |      r<sup>-1</sup>(G) | no. of spin structures|
 |----------------|-------------|-----------------|----:|
 |    min.58.1.1.0 |            1 |     min.58.1.1.0 | 32|
 |    min.59.1.1.1 |           C2 |     min.59.1.1.1 | 32|
