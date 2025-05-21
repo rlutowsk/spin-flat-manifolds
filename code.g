@@ -19,6 +19,8 @@ QNameByAffName := function( aname )
     return Concatenation(s[1], ".", s[2]);
 end;
 
+QNameByZName := QNameByAffName;
+
 #################################################################################
 #
 # ZClass
@@ -33,8 +35,6 @@ ZNameByAffName := function( aname )
     Remove(s);
     return JoinStringsWithSeparator(s, ".");
 end;
-
-ZNameByQName := ZNameByAffName;
 
 #################################################################################
 #

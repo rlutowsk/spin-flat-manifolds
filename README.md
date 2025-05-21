@@ -228,17 +228,17 @@ gap> Intersection( z_spin[5], z_non_spin[5] );
 
 $\mathbb Q$ classes of the above $\mathbb Z$ classes:
 ```gap
-gap> SSortedList( Intersection( z_spin[5], z_non_spin[5] ), ZNameByQName);
+gap> SSortedList( Intersection( z_spin[5], z_non_spin[5] ), QNameByZName);
 [ "group.361.1", "min.66.1", "min.70.1", "min.71.1", "min.85.1" ]
 ```
 
-We get 100 $\mathbb Z$ classes, collected in 43 $\mathbb Q$ classes for which there exist groups with and without spin structures:
+We get 100 $\mathbb Z$ classes, collected in 37 $\mathbb Q$ classes for which there exist groups with and without spin structures:
 
 ```gap
 gap> Size(Intersection( z_spin[6], z_non_spin[6] ));
 100
-gap> Size( SSortedList( Intersection( z_spin[6], z_non_spin[6] ), ZNameByQName) );
-43
+gap> Size( SSortedList( Intersection( z_spin[6], z_non_spin[6] ), QNameByZName) );
+37
 ```
 
 ### Table 2
@@ -268,19 +268,19 @@ gap> Size( SSortedList( Intersection( z_spin[6], z_non_spin[6] ), ZNameByQName) 
 - all groups
 
     ```gap
-    gap> List(a_orientable, Size)+List(a_non_orientable, Size);
+    gap> List( a_orientable, Size ) + List( a_non_orientable, Size );
     [ 1, 2, 10, 74, 1060, 38746 ]
     ```
 - orientable groups
 
     ```gap
-    gap> List(a_orientable, Size);
+    gap> List( a_orientable, Size );
     [ 1, 1, 6, 27, 174, 3314 ]
     ```
 - spin groups
 
     ```gap
-    gap> List(a_spin, Size);
+    gap> List( a_spin, Size );
     [ 1, 1, 6, 24, 88, 760 ]
     ```
 
@@ -294,7 +294,7 @@ gap> max := List( TransposedMat( aspin5 ), x->Maximum( List(x, y->Length(String(
 gap> for l in aspin5 do; row := List([1..4], i->String(l[i], max[i])); Print( JoinStringsWithSeparator(row, " | "), "\n"); od;
 ```
 
-|       $\Gamma'$ |         $G'$ |      $r^{-1}(G)$ | #$S$|
+|       $\Gamma'$ |         $G'$ |      $r^{-1}(G)$ | $\#S$|
 |----------------|-------------|-----------------|----:|
 |    min.58.1.1.0 |            1 |     min.58.1.1.0 | 32|
 |    min.59.1.1.1 |           C2 |     min.59.1.1.1 | 32|
