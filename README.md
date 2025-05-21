@@ -81,8 +81,9 @@ Here is an example way of generating low dimensional, i.e. up to dimension 6, Bi
 > In this step we are working with GAP.
 
 > [!IMPORTANT]
-> Whenever we say about a Bieberbach group $\Gamma$, it fits the following short exact sequence:  
-> $$ 0  \longrightarrow \mathbb{Z}^n \longrightarrow \Gamma \stackrel{\pi}{\longrightarrow} G \longrightarrow 1$$
+> Whenever we say about a Bieberbach group $\Gamma$, it fits the following short exact sequence:
+> 
+> $$ 0  \longrightarrow \mathbb{Z}^n \longrightarrow \Gamma \stackrel{r}{\longrightarrow} G \longrightarrow 1$$
 
 1. Read the $\mathbb Q$ and $\text{Aff}$ data:
 
@@ -100,16 +101,10 @@ Here is an example way of generating low dimensional, i.e. up to dimension 6, Bi
 
     - orientability
     - $\mathbb Q$-class of $G$ (from `qdata`)
-    - the CARAT name of the subgroup $\pi^{-1}(\text{Syl}_2(G))$ (the preimage of the Sylow $2$-subgroup of $G$)
+    - the CARAT name of the subgroup $r^{-1}(\text{Syl}_2(G))$ (the preimage of the Sylow $2$-subgroup of $G$)
     - the dimension of $H^1(\Gamma, \mathbb{F}_2)$
 
-    > [!NOTE]
-    > If $\Gamma$ is not orientable, the rest of the info is not needed, since $\Gamma$ is not spin. For the sake of time of the execution, the default behaviour of the function is as follows:
-    >
-    > a) determine orientability of $\Gamma$  
-    > b) if $\Gamma$ is orientable, calculate $\mathbb Q$-class of $G$ and $\pi^{-1}(\text{Syl}_2(G))$
-
-    Here are the options to run the function:
+    Here are the options to run the function (see the note that follows):
 
     - the default (minimal set of information):
 
@@ -131,6 +126,13 @@ Here is an example way of generating low dimensional, i.e. up to dimension 6, Bi
         ```gap
         gap> ParseAffData( qdata, adata : all, cohomology);
         ```
+> [!NOTE]
+> 
+> If $\Gamma$ is not orientable, the rest of the info is not needed, since $\Gamma$ is not spin. For the sake of time of the execution, the default behaviour of the `ParseAffData` function is as follows:
+>
+> a) determine orientability of $\Gamma$  
+> b) if $\Gamma$ is orientable, calculate $\mathbb Q$-class of $G$ and $\pi^{-1}(\text{Syl}_2(G))$
+
 ## Step 2: Lifts of certain holonomy groups to $\text{Spin}(n)$
 
 The crucial step is the determination of spin structures on flat manifolds with 2-group holonomy. We are interested in:
@@ -150,18 +152,18 @@ The crucial step is the determination of spin structures on flat manifolds with 
     gap> List( oq2data, x->x.name );
     ```
 
-1. Now comes the part where we look for lifts of generators of the group. This is done by hand (we can use methods from the article). The data is stored in `sdata.mac` file.
+2. Now comes the part where we look for lifts of generators of the group. This is done by hand (we can use methods from the article). The data is stored in `sdata.mac` file.
 
-    > [!TIP]
-    > The code is not included here, but one can use `PrintMaximaMatrix` function to generate data, which is already in `sdata.mac` file. As written above, the lifts to $\text{Spin}(n)$ must be calculated by hand.  
-    > To get a permutation, which corresponds to a signed permutation matrix, one can use the following code:
-    > ```gap
-    > gap> mat := [[0,0,-1,0],[1,0,0,0],[0,0,0,1],[0,1,0,0]];; # example data
-    > gap> PermList( List( TransposedMat(mat), row->PositionProperty(row,x->x in [-1,1])) );
-    > ```
-    > Note that we follow convention of CARAT to act from the left.
+> [!TIP]
+> The code is not included here, but one can use `PrintMaximaMatrix` function to generate data, which is already in `sdata.mac` file. As written above, the lifts to $\text{Spin}(n)$ must be calculated by hand.  
+> To get a permutation, which corresponds to a signed permutation matrix, one can use the following code:
+> ```gap
+> gap> mat := [[0,0,-1,0],[1,0,0,0],[0,0,0,1],[0,1,0,0]];; # example data
+> gap> PermList( List( TransposedMat(mat), row->PositionProperty(row,x->x in [-1,1])) );
+> ```
+> Note that we follow convention of CARAT to act from the left.
 
-1. In order to work with Clifford algebras, we use Maxima. The `run` function involves:
+3. In order to work with Clifford algebras, we use Maxima. The `run` function involves:
 
     a) checking if the groups lie in $O(n,\mathbb{Z})$ (almost all are)  
     b) checking whether we generated inverses of elements of $\text{Spin}(n)$  
@@ -177,10 +179,12 @@ The crucial step is the determination of spin structures on flat manifolds with 
     (%i4) print_to_file( "sdata.g", A );
     ```
 
-    > [!IMPORTANT]
-    > Let us be more precise about the presentation. If $\lambda \colon \text{Spin}(n) \to O(n)$ is the covering map, $G$ is as above, then its lift to spin is a central extension  
-    > $$ 1 \longrightarrow \{ \pm 1 \} \longrightarrow \widetilde G \stackrel{\lambda}{\longrightarrow} G \longrightarrow 1.$$  
-    > Hence in the presentation of $\widetilde G$ we get a central element $c$ of order $2$. The only nontrivial calculations involve lifting presentation of $G$, i.e. if $w$ is a relator in $G$, $\widetilde w$ - its lift to $\widetilde G$, then either $\widetilde w = 1$ or $\widetilde w = c$. This is a task of the step d).
+> [!IMPORTANT]
+> Let us be more precise about the presentation. If $\lambda \colon \text{Spin}(n) \to O(n)$ is the covering map, $G$ is as above, then its lift to spin is a central extension
+> 
+> $$ 1 \longrightarrow \{ \pm 1 \} \longrightarrow \widetilde G \stackrel{\lambda}{\longrightarrow} G \longrightarrow 1.$$
+> 
+> Hence in the presentation of $\widetilde G$ we get a central element $c$ of order $2$. The only nontrivial calculations involve lifting presentation of $G$, i.e. if $w$ is a relator in $G$, $\widetilde w$ - its lift to $\widetilde G$, then either $\widetilde w = 1$ or $\widetilde w = c$. This is a task of the step d).
 
 ## Step 3: Spin structures for low dimensional Bieberbach groups
 
