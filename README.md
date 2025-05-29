@@ -227,13 +227,13 @@ $\mathbb Z$ classes of groups with and without spin structures:
 
 ```gap
 gap> Intersection( z_spin[5], z_non_spin[5] );
-[ "group.361.1.1", "min.66.1.1", "min.66.1.3", "min.70.1.1", "min.70.1.15", "min.70.1.2", "min.70.1.3", "min.70.1.7", "min.71.1.1", "min.71.1.25", "min.85.1.3" ]
+#output: [ "group.361.1.1", "min.66.1.1", "min.66.1.3", "min.70.1.1", "min.70.1.15", "min.70.1.2", "min.70.1.3", "min.70.1.7", "min.71.1.1", "min.71.1.25", "min.85.1.3" ]
 ```
 
 $\mathbb Q$ classes of the above $\mathbb Z$ classes:
 ```gap
 gap> SSortedList( Intersection( z_spin[5], z_non_spin[5] ), QNameByZName);
-[ "group.361.1", "min.66.1", "min.70.1", "min.71.1", "min.85.1" ]
+#output: [ "group.361", "min.66", "min.70", "min.71", "min.85" ]
 ```
 
 We get 100 $\mathbb Z$ classes, collected in 37 $\mathbb Q$ classes for which there exist groups with and without spin structures:
